@@ -415,14 +415,27 @@ if "groq_key" not in st.session_state:
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### ⚙️ Configuration")
-    groq_key_input = st.text_input(
-        "Groq API Key",
-        type="password",
-        value=st.session_state.groq_key,
-        placeholder="gsk_..."
-    )
-    if groq_key_input:
-        st.session_state.groq_key = groq_key_input
+    if st.session_state.groq_key:
+        st.success("✅ AI Service Ready")
+        with st.expander("⚙️ Override API Key (Optional)"):
+            groq_key_input = st.text_input(
+                "Custom Groq Key",
+                type="password",
+                value=st.session_state.groq_key,
+                placeholder="gsk_..."
+            )
+            if groq_key_input:
+                st.session_state.groq_key = groq_key_input
+    else:
+        st.info("ℹ️ Enter your Groq API Key below to enable responses:")
+        groq_key_input = st.text_input(
+            "Groq API Key",
+            type="password",
+            value=st.session_state.groq_key,
+            placeholder="gsk_..."
+        )
+        if groq_key_input:
+            st.session_state.groq_key = groq_key_input
 
     st.markdown("---")
     st.markdown("""
