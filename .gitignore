@@ -1,1 +1,6 @@
 best_model_fixed.pt
+__pycache__/
+*.py[cod]
+.env
+.streamlit/secrets.toml
+

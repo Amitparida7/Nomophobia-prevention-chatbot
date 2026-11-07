@@ -341,11 +341,52 @@ Instructions:
 
 Generate your response:"""
 
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+    # Dynamically query available models for this API key from Groq
+    active_models = []
+    try:
+        models_data = client.models.list().data
+        for m in models_data:
+            mid = m.id
+            mid_lower = mid.lower()
+            if not any(k in mid_lower for k in ["whisper", "embed", "guard", "safeguard", "vision", "tts"]):
+                active_models.append(mid)
+    except Exception as e:
+        pass
+
+    # Preferred active models
+    preferred = [
+        "llama-3.3-70b-versatile",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "llama-3.1-70b-versatile",
+        "llama-3.1-8b-instant",
+        "gemma2-9b-it",
+        "qwen/qwen3.8-27b"
+    ]
+
+    candidates = [m for m in preferred if m in active_models]
+    for m in active_models:
+        if m not in candidates:
+            candidates.append(m)
+
+    if not candidates:
+        candidates = preferred
+
+    errors = []
+    for model_name in candidates:
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            errors.append(f"{model_name}: {str(e)}")
+            continue
+
+    if errors:
+        raise RuntimeError("Could not generate response. Errors:\n" + "\n".join(errors))
+    raise RuntimeError("No suitable chat model found on Groq.")
 
 
 # ─────────────────────────────────────────────
@@ -381,7 +422,7 @@ with st.sidebar:
     1. You type how you feel about your phone<br>
     2. BERT model detects nomophobia + severity<br>
     3. RAG retrieves relevant advice<br>
-    4. Llama 3.1 generates a caring response
+    4. LLaMA generates a caring response
     </div>
     """, unsafe_allow_html=True)
 
@@ -461,18 +502,21 @@ if submitted and user_input.strip():
         st.error("⚠️ Please enter your Groq API Key in the sidebar to enable chatbot responses.")
     else:
         with st.spinner("Analyzing your response..."):
-            nomo, severity, confidence = predict(user_input, bert_model, tokenizer, device)
-            context = retrieve_context(nomo, severity, embed_model, faiss_index, documents)
-            bot_reply = generate_response(user_input, nomo, severity, context, st.session_state.groq_key)
+            try:
+                nomo, severity, confidence = predict(user_input, bert_model, tokenizer, device)
+                context = retrieve_context(nomo, severity, embed_model, faiss_index, documents)
+                bot_reply = generate_response(user_input, nomo, severity, context, st.session_state.groq_key)
 
-            st.session_state.chat_history.append({
-                "user": user_input,
-                "nomo": nomo,
-                "severity": severity,
-                "confidence": confidence,
-                "bot": bot_reply
-            })
-        st.rerun()
+                st.session_state.chat_history.append({
+                    "user": user_input,
+                    "nomo": nomo,
+                    "severity": severity,
+                    "confidence": confidence,
+                    "bot": bot_reply
+                })
+                st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ Error generating response: {str(e)}")
 
 elif submitted and not user_input.strip():
     st.warning("Please type something before submitting.")
