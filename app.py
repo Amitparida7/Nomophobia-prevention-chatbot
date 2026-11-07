@@ -395,8 +395,19 @@ Generate your response:"""
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+# Auto-detect API key from Streamlit secrets or environment if configured
+default_key = ""
+try:
+    if "GROQ_API_KEY" in st.secrets:
+        default_key = st.secrets["GROQ_API_KEY"]
+except Exception:
+    pass
+
+if not default_key:
+    default_key = os.environ.get("GROQ_API_KEY", "")
+
 if "groq_key" not in st.session_state:
-    st.session_state.groq_key = ""
+    st.session_state.groq_key = default_key
 
 
 # ─────────────────────────────────────────────
